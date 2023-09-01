@@ -27,6 +27,8 @@ class App:
 
         self.preview_size = self.audience_display_size.size()
         self.preview_size.scale(300, 300, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+
+        self.header_font = QFont("Times", 10, QFont.Bold)
         
         self.library_manager = LibraryManager()
 
@@ -60,7 +62,9 @@ class App:
             item.setText(pl_item)
             self.playlist_items.addItem(item)
 
-            self.presentation_tab_layout.addWidget(QLabel(pl_item))
+            item_label = QLabel(pl_item)
+            item_label.setFont(self.header_font)
+            self.presentation_tab_layout.addWidget(item_label)
             self.load_item_slides(pl_item)
     
     def remove_prev_item_slides(self):
@@ -68,16 +72,18 @@ class App:
             olditem.widget().deleteLater()
     
     def load_item_slides(self, item):
-        self.window.setEnabled(False)
-        
+        item_frame = QFrame()
+        item_layout = FlowLayout()
+        item_frame.setLayout(item_layout)
+
         i = 0
 
         for it_slide in self.library_manager.get_playlist_item_slides(self.playlists.selectedItems()[0].text(), item):
             slide = SlidePreview(it_slide["text"], it_slide["background"], self.preview_size)
-            self.presentation_tab_layout.addWidget(slide)
+            item_layout.addWidget(slide)
             i += 1
-
-        self.window.setEnabled(True)
+        
+        self.presentation_tab_layout.addWidget(item_frame)
     
     def add_widgets(self):
 
@@ -129,7 +135,6 @@ class App:
         self.playlist_items = QListWidget()
         self.playlist_items.setResizeMode(QListView.Fixed)
         self.library_layout.addWidget(self.playlist_items)
-        self.playlist_items.clicked.connect(lambda index: self.load_item_slides(index.data()))
 
         # The main view with tabs
         self.tabs = QTabWidget()
@@ -143,7 +148,7 @@ class App:
         self.presentation_tab_scroll_container.addWidget(self.presentation_tab_scroll)
 
         self.presentation_tab_scroll_inner = QFrame()
-        self.presentation_tab_layout = FlowLayout()
+        self.presentation_tab_layout = QVBoxLayout()
         self.presentation_tab_scroll_inner.setLayout(self.presentation_tab_layout)
 
         self.presentation_tab_scroll.setWidget(self.presentation_tab_scroll_inner)
