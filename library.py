@@ -4,22 +4,25 @@ import json
 The library manager allows us to interact with the library database. This will store playlists and playlist data
 """
 
+class NO_CONTENT:
+    pass
+
 class LibraryManager:
     DEFAULT_LIBRARY = {
         "playlists": {
             "Example Playlist": {
                 "Example Song": [
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    {"type": "text", "text": "Example Slide", "background": "no.png"},
-                    #{"type": "video", "path": "examplevideo.mp4"}
+                    {"type": "text", "text": "Never gonna give you up\nNever gonna let you down\nNever gonna run around and desert you\nNever gonna make you cry\nNever gonna say goodbye\nNever gonna tell a lie and hurt you", "background": "rickey.png"},
+                    {"type": "text", "text": "We've known each other for so long\nYour heart's been aching but you're too shy to say it\nI think we both know what's been going on\nYou know the game and you're gonna play it", "background": "rickey.png"},
+                    {"type": "text", "text": "*SCREAMS*", "background": None},
+                    {"type": "text", "text": "Example Slide", "background": "rickey.png"},
+                    {"type": "text", "text": "Example Slide", "background": "rickey.png"},
+                    {"type": "text", "text": "Example Slide", "background": "rickey.png"},
+                    {"type": "text", "text": "Example Slide", "background": "rickey.png"},
+                    {"type": "text", "text": "Example Slide", "background": "rickey.png"},
+                    {"type": "text", "text": "Example Slide", "background": "rickey.png"},
+                    {"type": "text", "text": "Don't you get the point? The slides are all examples! Give up already.", "background": "no.png"},
+                    {"type": "video", "video": "nggyu.mp4"}
                 ]
             }
         }
@@ -29,6 +32,20 @@ class LibraryManager:
         self.library = None
         self.load_library()
 
+    def edit_slide(self, playlist, item, index, type=NO_CONTENT, text=NO_CONTENT, background=NO_CONTENT, video=NO_CONTENT):
+        editing = self.library["playlists"][playlist][item][index]
+        if type is not NO_CONTENT:
+            editing["type"] = type
+        if text is not NO_CONTENT:
+            editing["text"] = text
+        if background is not NO_CONTENT:
+            editing["background"] = background
+        if video is not NO_CONTENT:
+            editing["video"] = NO_CONTENT
+
+        print(editing)
+        print(self.library)
+
     def get_playlists(self):
         return list(self.library["playlists"].keys())
 
@@ -37,6 +54,12 @@ class LibraryManager:
     
     def get_playlist_item_slides(self, playlist, item):
         return self.library["playlists"][playlist][item]
+    
+    def add_playlist_item(self, playlist, item):
+        self.library["playlists"][playlist][item] = []
+    
+    def add_playlist(self, playlist):
+        self.library["playlists"][playlist] = {}
 
     def load_library(self):
         with open("library.json", "r+") as library_file:

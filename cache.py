@@ -1,2 +1,3 @@
 class Cache:
-    PIXMAPS = {}
+    PREVIEW_PIXMAPS = {}
+    DISPLAY_PIXMAPS = {}
