@@ -6,6 +6,8 @@ from library import LibraryManager
 from slide_preview import SlidePreview
 from flow_layout import FlowLayout
 from view import View
+from cache import Cache
+from os.path import exists
 
 class App:
     def __init__(self):
@@ -40,6 +42,8 @@ class App:
 
         self.selected_item = None
         self.selected_index = None
+
+        self.selected_editing = None
 
         self.item_frames = {}
         
@@ -94,6 +98,7 @@ class App:
     def load_item_slides(self, item):
         item_frame = QFrame()
         item_layout = FlowLayout()
+        item_layout.setAlignment(QtCore.Qt.AlignCenter)
         item_frame.setLayout(item_layout)
 
         self.item_frames[item] = []
@@ -142,6 +147,54 @@ class App:
     def clear_video(self):
         self.audience_display.showVideo(None)
     
+    def choose_slide_background(self):
+        print("SLIDE")
+
+    def remove_prev_editor_slides(self):
+        while (olditem := self.edit_tab_slide_layout.takeAt(0)) is not None:
+            olditem.widget().deleteLater()
+
+    def load_item_into_editor(self, item):
+        self.remove_prev_editor_slides()
+        playlist = self.get_selected_playlist()
+
+        i = 0
+
+        for item_slide in self.library_manager.get_playlist_item_slides(playlist, item):
+            #TODO: Here and in load_item_slides(), replace this if branch with something cleaner
+            if item_slide["type"] == "text":
+                slide = SlidePreview(item_slide["text"], item_slide["background"], None, self.preview_size, self.load_slide_into_editor, item, i, playlist=playlist, library=self.library_manager)
+            elif item_slide["type"] == "video":
+                slide = SlidePreview(None, None, item_slide["video"], self.preview_size, self.load_slide_into_editor, item, i, playlist=playlist, library=self.library_manager)
+            self.edit_tab_slide_layout.addWidget(slide)
+            i += 1
+    
+    def load_slide_into_editor(self, preview: SlidePreview, item, index, text, background, video):
+        slide_type = None
+        if video is not None:
+            slide_type = "video"
+        else:
+            slide_type = "text"
+        
+        self.editing_slide_type_dropdown.setCurrentText(slide_type)
+
+        if slide_type == "text":
+            self.editing_slide_text_in.setText(text)
+            if background:
+                self.edit_tab_bg_preview.show()
+                if not exists(background):
+                    background = "nomedia.png"
+                self.edit_tab_bg_preview.setPixmap(Cache.PREVIEW_PIXMAPS[background])
+            else:
+                self.edit_tab_bg_preview.hide()
+        else:
+            self.editing_slide_text_in.setText("")
+
+        preview.setSelected(True)
+        if self.selected_editing:
+            self.selected_editing.setSelected(False)
+        self.selected_editing = preview
+
     def add_widgets(self):
 
         # Splitter view
@@ -191,6 +244,7 @@ class App:
 
         self.playlist_items = QListWidget()
         self.playlist_items.setResizeMode(QListView.Fixed)
+        self.playlist_items.clicked.connect(lambda index: self.load_item_into_editor(index.data()))
         self.library_layout.addWidget(self.playlist_items)
 
         # The main view with tabs
@@ -215,9 +269,67 @@ class App:
         self.tabs.addTab(self.presentation_tab, "Presentation")
         self.tabs.addTab(self.edit_tab, "Edit")
 
+        # Edit tab
+        self.edit_tab_layout = QHBoxLayout()
+        self.edit_tab.setLayout(self.edit_tab_layout)
+
+        ## The edit tab view for the available slides in the selected item
+        self.edit_tab_slide_list = QScrollArea()
+        self.edit_tab_slide_list_layout = QVBoxLayout()
+        self.edit_tab_slide_list.setLayout(self.edit_tab_slide_list_layout)
+        self.edit_tab_layout.addWidget(self.edit_tab_slide_list)
+
+        self.edit_tab_slide_list_inner = QFrame()
+        self.edit_tab_slide_layout = QVBoxLayout()
+        self.edit_tab_slide_list_inner.setLayout(self.edit_tab_slide_layout)
+
+        self.edit_tab_slide_layout.addWidget(SlidePreview("Select an item from the playlist to edit", None, None, self.preview_size, lambda *args: None))
+
+        self.edit_tab_slide_list.setWidget(self.edit_tab_slide_list_inner)
+        self.edit_tab_slide_list.setWidgetResizable(True)
+        self.edit_tab_slide_list.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+
+        ## The edit tab view for the slide being edited
+        self.edit_tab_editing_pane = QFrame()
+        self.editing_tab_editing_layout = QVBoxLayout()
+        self.edit_tab_editing_pane.setLayout(self.editing_tab_editing_layout)
+        self.edit_tab_layout.addWidget(self.edit_tab_editing_pane)
+
+        ### Slide type dropdown
+        self.edit_tab_type_pane = QFrame()
+        self.edit_tab_type_layout = QHBoxLayout()
+        self.edit_tab_type_pane.setLayout(self.edit_tab_type_layout)
+        self.edit_tab_type_layout.addWidget(QLabel("Slide Type:"))
+        self.editing_slide_type_dropdown = QComboBox()
+        self.editing_slide_type_dropdown.addItems(["text", "video"])
+        self.edit_tab_type_layout.addWidget(self.editing_slide_type_dropdown)
+        self.editing_tab_editing_layout.addWidget(self.edit_tab_type_pane)
+
+        ### Slide text area
+        self.edit_tab_text_pane = QFrame()
+        self.edit_tab_text_layout = QVBoxLayout()
+        self.edit_tab_text_pane.setLayout(self.edit_tab_text_layout)
+        self.edit_tab_text_layout.addWidget(QLabel("Slide Text:"))
+        self.editing_slide_text_in = QTextEdit()
+        self.edit_tab_text_layout.addWidget(self.editing_slide_text_in)
+        self.editing_tab_editing_layout.addWidget(self.edit_tab_text_pane)
+
+        ### Slide background chooser
+        self.edit_tab_bg_preview = QLabel()
+        self.editing_tab_editing_layout.addWidget(self.edit_tab_bg_preview)
+        self.edit_tab_bg_preview.hide()
+
+        self.edit_tab_bg_button = QPushButton("Choose Background")
+        self.edit_tab_bg_button.clicked.connect(self.choose_slide_background)
+        self.editing_tab_editing_layout.addWidget(self.edit_tab_bg_button)
+
+        self.edit_tab_layout.setStretchFactor(self.edit_tab_slide_list, 0)
+        self.edit_tab_layout.setStretchFactor(self.edit_tab_editing_pane, 1)
+
         # The display view part
         self.display_view = QFrame()
-        self.display_view_layout = FlowLayout()
+        self.display_view_layout = QVBoxLayout()
+        self.display_view_layout.setAlignment(QtCore.Qt.AlignCenter)
         self.display_view.setLayout(self.display_view_layout)
 
         self.display_preview = SlidePreview(None, None, None, self.preview_size, use_context_menu=False)
@@ -252,6 +364,8 @@ class App:
         self.display_checkbox_layout.addWidget(self.stage_display_checkbox)
 
         self.display_view_layout.addWidget(self.display_checkboxes)
+
+        self.display_view_layout.addStretch()
 
         # Adding it all to the splitter
         self.splitter.addWidget(self.library)

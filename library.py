@@ -43,9 +43,6 @@ class LibraryManager:
         if video is not NO_CONTENT:
             editing["video"] = NO_CONTENT
 
-        print(editing)
-        print(self.library)
-
     def get_playlists(self):
         return list(self.library["playlists"].keys())
 
