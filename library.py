@@ -41,7 +41,11 @@ class LibraryManager:
         if background is not NO_CONTENT:
             editing["background"] = background
         if video is not NO_CONTENT:
-            editing["video"] = NO_CONTENT
+            if video is None:
+                if "video" in editing.keys():
+                    del editing["video"]
+            else:
+                editing["video"] = video
 
     def get_playlists(self):
         return list(self.library["playlists"].keys())

@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5 import QtCore
 import qdarktheme
-from library import LibraryManager
+from library import LibraryManager, NO_CONTENT
 from slide_preview import SlidePreview
 from flow_layout import FlowLayout
 from view import View
@@ -44,6 +44,8 @@ class App:
         self.selected_index = None
 
         self.selected_editing = None
+
+        self.loaded_editing_item = None
 
         self.item_frames = {}
         
@@ -109,8 +111,19 @@ class App:
 
         for it_slide in self.library_manager.get_playlist_item_slides(selected_playlist, item):
             if it_slide["type"] == "text":
+
+                if not "text" in it_slide.keys():
+                    it_slide["text"] = "Text"
+                if not "background" in it_slide.keys():
+                    it_slide["background"] = ""
+
                 slide = SlidePreview(it_slide["text"], it_slide["background"], None, self.preview_size, self.show_slide, item, i, playlist=selected_playlist, library=self.library_manager)
+            
             elif it_slide["type"] == "video":
+
+                if not "video" in it_slide.keys():
+                    it_slide["video"] = None
+
                 slide = SlidePreview(None, None, it_slide["video"], self.preview_size, self.show_slide, item, i, playlist=selected_playlist, library=self.library_manager)
             item_layout.addWidget(slide)
             self.item_frames[item].append(slide)
@@ -147,14 +160,66 @@ class App:
     def clear_video(self):
         self.audience_display.showVideo(None)
     
+    def choose_slide_type(self):
+        mode = self.editing_slide_type_dropdown.currentText()
+        if mode == "text":
+            self.edit_tab_text_pane.show()
+            self.edit_tab_bg_button.show()
+            self.edit_tab_bg_preview.show()
+
+            self.edit_tab_video_button.hide()
+            self.edit_tab_video_preview.hide()
+        else:
+            self.edit_tab_text_pane.hide()
+            self.edit_tab_bg_button.hide()
+            self.edit_tab_bg_preview.hide()
+
+            self.edit_tab_video_button.show()
+            self.edit_tab_video_preview.show()
+        self.edit_current_slide()
+
     def choose_slide_background(self):
         print("SLIDE")
+    
+    def choose_slide_video(self):
+        print("VIDEO")
+    
+    def edit_slide_text(self):
+        self.edit_current_slide()
+    
+    def edit_current_slide(self):
+        text = self.editing_slide_text_in.toPlainText()
+        mode = self.editing_slide_type_dropdown.currentText()
+
+        if mode == "video":
+            video = "video"
+        else:
+            video = None
+        if self.selected_editing:
+
+            # Get the slide data in the library
+            #slide = self.library_manager.get_playlist_item_slides(self.selected_editing.playlist, self.selected_editing.item)[self.selected_editing.index]
+            # Change the data in the library
+            self.library_manager.edit_slide(self.selected_editing.playlist, self.selected_editing.item, self.selected_editing.index, mode, text, "background", video)
+            # Change the edit preview text
+            self.selected_editing.setup_text(text)
+            self.selected_editing.setup_background("background")
+            self.selected_editing.setup_video(video)
+            # Change the preview in the presenter tab
+            presenter_slide = self.item_frames[self.loaded_editing_item][self.selected_editing.index]
+            if presenter_slide:
+                presenter_slide.setup_text(text)
+                presenter_slide.setup_background("background")
+                presenter_slide.setup_video(video)
 
     def remove_prev_editor_slides(self):
         while (olditem := self.edit_tab_slide_layout.takeAt(0)) is not None:
             olditem.widget().deleteLater()
+        
+        self.selected_editing = None
 
     def load_item_into_editor(self, item):
+        self.loaded_editing_item = item
         self.remove_prev_editor_slides()
         playlist = self.get_selected_playlist()
 
@@ -165,21 +230,37 @@ class App:
             if item_slide["type"] == "text":
                 slide = SlidePreview(item_slide["text"], item_slide["background"], None, self.preview_size, self.load_slide_into_editor, item, i, playlist=playlist, library=self.library_manager)
             elif item_slide["type"] == "video":
+                if not "video" in item_slide.keys():
+                    item_slide["video"] = None
                 slide = SlidePreview(None, None, item_slide["video"], self.preview_size, self.load_slide_into_editor, item, i, playlist=playlist, library=self.library_manager)
             self.edit_tab_slide_layout.addWidget(slide)
             i += 1
     
     def load_slide_into_editor(self, preview: SlidePreview, item, index, text, background, video):
+        
+        preview.setSelected(True)
+        if self.selected_editing:
+                self.selected_editing.setSelected(False)
+        self.selected_editing = preview
+
         slide_type = None
         if video is not None:
             slide_type = "video"
         else:
             slide_type = "text"
         
+        self.editing_slide_type_dropdown.blockSignals(True)
         self.editing_slide_type_dropdown.setCurrentText(slide_type)
+        self.editing_slide_type_dropdown.blockSignals(False)
+
 
         if slide_type == "text":
+            
+            self.editing_slide_text_in.blockSignals(True)
             self.editing_slide_text_in.setText(text)
+            self.editing_slide_text_in.blockSignals(False)
+
+
             if background:
                 self.edit_tab_bg_preview.show()
                 if not exists(background):
@@ -190,10 +271,8 @@ class App:
         else:
             self.editing_slide_text_in.setText("")
 
-        preview.setSelected(True)
-        if self.selected_editing:
-            self.selected_editing.setSelected(False)
-        self.selected_editing = preview
+        self.choose_slide_type()
+
 
     def add_widgets(self):
 
@@ -305,6 +384,8 @@ class App:
         self.edit_tab_type_layout.addWidget(self.editing_slide_type_dropdown)
         self.editing_tab_editing_layout.addWidget(self.edit_tab_type_pane)
 
+        self.editing_slide_type_dropdown.currentTextChanged.connect(self.choose_slide_type)
+
         ### Slide text area
         self.edit_tab_text_pane = QFrame()
         self.edit_tab_text_layout = QVBoxLayout()
@@ -313,6 +394,8 @@ class App:
         self.editing_slide_text_in = QTextEdit()
         self.edit_tab_text_layout.addWidget(self.editing_slide_text_in)
         self.editing_tab_editing_layout.addWidget(self.edit_tab_text_pane)
+
+        self.editing_slide_text_in.textChanged.connect(self.edit_slide_text)
 
         ### Slide background chooser
         self.edit_tab_bg_preview = QLabel()
@@ -325,6 +408,16 @@ class App:
 
         self.edit_tab_layout.setStretchFactor(self.edit_tab_slide_list, 0)
         self.edit_tab_layout.setStretchFactor(self.edit_tab_editing_pane, 1)
+
+        ### Slide video chooser
+        self.edit_tab_video_preview = QLabel("No video")
+        self.editing_tab_editing_layout.addWidget(self.edit_tab_video_preview)
+        self.edit_tab_video_preview.hide()
+
+        self.edit_tab_video_button = QPushButton("Choose Video")
+        self.edit_tab_video_button.clicked.connect(self.choose_slide_video)
+        self.editing_tab_editing_layout.addWidget(self.edit_tab_video_button)
+        self.edit_tab_video_button.hide()
 
         # The display view part
         self.display_view = QFrame()

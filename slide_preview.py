@@ -89,6 +89,13 @@ class SlidePreview(QWidget):
         else:
             self._selectedline.setStyleSheet("background-color: transparent")
     
+    def setup_video(self, video):
+        if video is not None:
+            self._video.setText(video)
+        else:
+            self._video.setText("")
+        self.video = video
+    
     def setup_background(self, background):
         if not background:
             self._background.clear()
@@ -104,9 +111,11 @@ class SlidePreview(QWidget):
         else:
             background_map = Cache.PREVIEW_PIXMAPS[background]
         self._background.setPixmap(background_map)
+        self.background = background
     
     def setup_text(self, text):
         self._text.setText(text)
+        self.text = text
 
     def mousePressEvent(self, a0):
         if a0.button() == QtCore.Qt.LeftButton:
