@@ -179,7 +179,9 @@ class App:
         self.edit_current_slide()
 
     def choose_slide_background(self):
-        print("SLIDE")
+        fileName, _ = QFileDialog.getOpenFileName(filter="PNG (*.png);;JPG (*.jpg);;JPEG (*.jpeg)")
+        if fileName:
+            print(fileName)
     
     def choose_slide_video(self):
         print("VIDEO")
@@ -237,7 +239,7 @@ class App:
             i += 1
     
     def load_slide_into_editor(self, preview: SlidePreview, item, index, text, background, video):
-        
+
         preview.setSelected(True)
         if self.selected_editing:
                 self.selected_editing.setSelected(False)
