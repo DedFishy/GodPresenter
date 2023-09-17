@@ -31,6 +31,14 @@ class LibraryManager:
     def __init__(self):
         self.library = None
         self.load_library()
+    
+    def delete_slide(self, playlist, item, index):
+        del self.library["playlists"][playlist][item][index]
+
+    def add_slide(self, playlist, item, index, slide=None):
+        if not slide:
+            slide = {"type": "text", "text": "I didn't change the text of this slide. Sue me!", "background": None}
+        self.library["playlists"][playlist][item].insert(index+1, slide)
 
     def edit_slide(self, playlist, item, index, type=NO_CONTENT, text=NO_CONTENT, background=NO_CONTENT, video=NO_CONTENT):
         editing = self.library["playlists"][playlist][item][index]

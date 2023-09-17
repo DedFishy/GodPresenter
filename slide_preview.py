@@ -13,7 +13,7 @@ class SlidePreview(QWidget):
     FONT = QFont("Helvetica", 10, QFont.Bold)
     PLAY_FONT = QFont("Helvetica", 20, QFont.Bold)
 
-    def __init__(self, text=None, background=None, video=None, size=QtCore.QSize(100, 100), show_function = lambda *args: None, item = None, index = None, playlist = None, use_context_menu=True, library: LibraryManager = None, *args, **kwargs):
+    def __init__(self, text=None, background=None, video=None, size=QtCore.QSize(100, 100), show_function = lambda *args: None, item = None, index = None, playlist = None, use_context_menu=True, library: LibraryManager = None, quick_edit_callback = lambda *args: None, *args, **kwargs):
         super(SlidePreview, self).__init__(*args, **kwargs)
 
         self._layout = QGridLayout()
@@ -33,6 +33,8 @@ class SlidePreview(QWidget):
         self._selectedline.setMinimumSize(size.width(), lineheight)
         self._selectedline.setMaximumSize(size.width(), lineheight)
         self._selectedline.setStyleSheet("background-color: transparent")
+
+        self.quick_edit_callback = quick_edit_callback
 
         self.text = text
         self.background = background
@@ -60,7 +62,7 @@ class SlidePreview(QWidget):
            self.setup_text(text)
         
         if video:
-            self._video.setText(video)
+            self._video.setText(video.split("/")[-1])
         
         self._layout.addWidget(self._background, 0,0,1,1, QtCore.Qt.AlignHCenter)
         self._layout.addWidget(self._text, 0,0,1,1, QtCore.Qt.AlignHCenter)
@@ -73,8 +75,11 @@ class SlidePreview(QWidget):
         self.setMaximumSize(size)
         self.setMinimumSize(size)
     
-    def contextMenuEvent(self, event):
+    def context_menu_function(self, slide, event):
         self._context_menu.exec(event.globalPos())
+    
+    def contextMenuEvent(self, event):
+        self.context_menu_function(self, event)
     
     def quick_edit(self, e):
         text, ok = QInputDialog.getMultiLineText(self, 'Slide Text', 'Set the slide\'s text', self._text.text())
@@ -82,6 +87,7 @@ class SlidePreview(QWidget):
             self.setup_text(text)
             self.text = text
             self.library.edit_slide(self.playlist, self.item, self.index, text=text)
+            self.quick_edit_callback(text)
     
     def setSelected(self, selected):
         if selected:
@@ -91,7 +97,7 @@ class SlidePreview(QWidget):
     
     def setup_video(self, video):
         if video is not None:
-            self._video.setText(video)
+            self._video.setText(video.split("/")[-1])
         else:
             self._video.setText("")
         self.video = video
@@ -99,6 +105,7 @@ class SlidePreview(QWidget):
     def setup_background(self, background):
         if not background:
             self._background.clear()
+            self.background = background
             return
         if not exists(background):
             background = "nomedia.png"
@@ -119,4 +126,7 @@ class SlidePreview(QWidget):
 
     def mousePressEvent(self, a0):
         if a0.button() == QtCore.Qt.LeftButton:
-            self.show_function(self, self.item, self.index, self.text, self.background, self.video)
+            self.run_show_function()
+    
+    def run_show_function(self):
+        self.show_function(self, self.item, self.index, self.text, self.background, self.video)
